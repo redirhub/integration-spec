@@ -1,4 +1,4 @@
-# integration-spec
+# integration-spec: an open format for serving redirects from a rules file
 
 **The open format behind RedirHub Integration Mode:** a plain-text rules file that a website's own
 platform (a web server, a CDN, an app framework, a CMS) downloads to serve redirects itself, the
@@ -24,6 +24,9 @@ repository is the contract between them.
 | Cloudflare Workers | [redirhub/cloudflare-redirects](https://github.com/redirhub/cloudflare-redirects) |
 
 RedirHub's rules writer and its edge (which receives the reports) test against the same sample.
+Writing a client for another platform (a CMS, a web server, a CDN, a framework)? Implement the
+three parts below, test against [`spec/v1/`](spec/v1), keep a copy of it with a CI check, and add
+your row to [the list of copies](spec/v1/README.md#copies).
 
 ## Rules file format v1
 
