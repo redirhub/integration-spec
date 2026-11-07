@@ -13,6 +13,7 @@ repository is the contract between them.
 | [Rules file format v1](#rules-file-format-v1) | What a client downloads and how it reads it |
 | [Answering requests](#answering-requests) | The check path, exact rules, the catch-all |
 | [Reports](#reports) | What a client posts to `@hits` |
+| [Identifying the client](#identifying-the-client) | The `User-Agent` of its own requests |
 | [`spec/v1/`](spec/v1) | The golden sample: normative, every implementation tests against it |
 
 ## Implementations
@@ -155,6 +156,32 @@ Each line is the Apache combined log format with the absolute URL:
 
 RedirHub takes the link from `file=` (without a trailing `/*`, percent-decoded) and counts the
 line for the key's workspace. No cookies, other headers or bodies are ever sent.
+
+## Identifying the client
+
+Every request a client makes itself, the rules download and each report, should carry a short
+`User-Agent` that names the client and its version, so RedirHub can count which integrations are
+in use and spot an outdated one:
+
+```
+User-Agent: <client>/<version>
+```
+
+- One product token: the client's package or repository name, a slash, its version. No comments,
+  URLs, platform details or site names; keep it under 40 characters.
+- The same value on the rules download and on the reports.
+- A client written for one site, without a release of its own (for example from RedirHub's setup
+  prompt), sends `<platform>-custom/1`, raising the number when its behaviour changes.
+
+| Client | `User-Agent` |
+| --- | --- |
+| Caddy module | `caddy-redirects/0.3.2` |
+| Next.js package | `nextjs-redirects/0.2.1` |
+| Cloudflare Workers package | `cloudflare-redirects/0.2.1` |
+| A WordPress plugin written for one site | `wordpress-custom/1` |
+
+This is the header of the client's own requests. The `User-Agent` field inside a report line is
+the visitor's, copied from the request the client redirected, and never the client's.
 
 ## Versioning
 
