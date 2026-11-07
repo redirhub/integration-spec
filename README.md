@@ -42,6 +42,7 @@ your row to [the list of copies](spec/v1/README.md#copies).
 @host shop.example.com check=K3Vb9QmX
 promo.example.com/old-pricing	https://promo.example.com/pricing
 promo.example.com/promo	https://sale.example.com/	302
+promo.example.com/tour	https://tour.example.net/	frame
 shop.example.com/*	https://www.example.net/	301	pq
 ```
 
@@ -74,12 +75,30 @@ Tab-separated columns: `source<TAB>target[<TAB>status[<TAB>flags[<TAB>options]]]
   hostnames without an `@host` line are ignored, and so is a source with a scheme, without a path,
   or with a space, `"` or `\`. A query in the source is ignored.
 - **target**: an absolute `http` or `https` URL, used as is.
-- **status**: 301, 302, 307 or 308; empty means 301. Any other value skips the rule.
+- **status**: 301, 302, 307, 308 or `frame` ([frame pages](#frame-pages)); empty means 301. Any
+  other value skips the rule. Clients written before `frame` skip such a rule too.
 - **flags** (may be empty): `p` appends the request path (catch-all only, no double slash), `q`
   keeps the query string (with `?` or `&`). Flags are must-understand: a rule with an unknown flag
   letter is skipped.
-- **options**: space-separated `key=value`, may be ignored; further columns are ignored.
+- **options**: space-separated `key=value`, may be ignored ([the options RedirHub writes](#options));
+  further columns are ignored.
 - A line that cannot be parsed is skipped; the first rule for a source wins.
+
+### Options
+
+What the link asks for beyond its target and status. A client may carry any of them out, and
+ignores the ones it does not: the rule then redirects (or shows its frame) as if they were absent.
+Values never hold a space; one that could is percent-encoded.
+
+- `password=<bcrypt hash>`: the link is password protected. A client that supports it answers
+  with a password form and redirects only once the visitor enters a password that matches the
+  hash.
+- `destinations=<url>,<url>`: further destinations after the target, each an absolute URL with any
+  comma in it as `%2C`. `routing=` names how RedirHub's edge picks one per visit: `random`,
+  `order` (in turn) or `fastest`. A client that supports it picks the same way; the target alone
+  is always a correct answer.
+- `plugins=<name>,<name>`: the link's plugins, as on RedirHub's edge: `nobot` (keep bots out),
+  `nowechat` (send WeChat's in-app browser to an "open in your browser" page) and `protection`.
 
 ### Downloading
 
@@ -111,6 +130,19 @@ case-sensitive, compared percent-decoded (bytewise: `%C3%BC`, `%c3%bc` and a raw
 path), leading and trailing slashes ignored as on RedirHub's edge (`/old/` and `//old` match
 `{host}/old`); the root is `/`. Scheme and query string are ignored.
 
+### Frame pages
+
+A rule with status `frame` shows its target in a frame instead of redirecting: the client answers
+`200` with `Content-Type: text/html; charset=utf-8` and an HTML page whose one full-window
+`<iframe>` has the Location as its `src` (HTML-escaped). The address bar keeps the visitor's URL.
+It is answered like a redirect: an exact rule before the site's own routes, a catch-all only on
+the site's 404, the flags applied to the `src`, `X-Powered-By` when the file has `@powered-by`,
+and reported. The page's `<title>` is the target's hostname; the rest of the page is the
+client's.
+
+A client that cannot answer with a page of its own redirects with `302` to the same Location
+instead, and reports that redirect.
+
 **Location.** The target as written. Without `q` the request query is dropped; with `q` it is
 appended with `?`, or `&` when the target has a query. With `p` (catch-all only) the escaped
 request path is appended to the target's path without a double slash. A fragment of the target
@@ -120,8 +152,9 @@ the check path and the site's own answers do not.
 ## Reports
 
 When the file has `@hits` and the client has the workspace's **integration key**, it reports every
-redirect it served (exact and catch-all) and, for hostnames with `report404`, the site's own 404s
-that no rule redirected. No other status is reported.
+redirect and frame page it served (exact and catch-all, a frame page with status `200`) and, for
+hostnames with `report404`, the site's own 404s that no rule redirected. No other status is
+reported.
 
 ```
 POST <@hits>
@@ -148,11 +181,11 @@ Each line is the Apache combined log format with the absolute URL:
 - The request: method, the absolute URL (`http://` or `https://` as the visitor asked, the
   hostname as listed: lowercase, no port; the path and query as sent, escaped), the protocol.
   Spaces, `"`, `\` and control characters in the URL are percent-encoded.
-- The status, the response body size (`0` for a redirect), the Referer and the User-Agent, each
+- The status, the response body size (`0` for a redirect and a frame page), the Referer and the User-Agent, each
   cut to 1 KB, `-` when missing, `"` and `\` backslash-escaped, control characters as `\xHH`.
-- For a redirect: ` file=<the rule's source column, verbatim>` and ` destination=<the Location
-  sent>` (spaces, `"`, `\` and control characters percent-encoded). A 404 line ends after the
-  User-Agent.
+- For a redirect and a frame page: ` file=<the rule's source column, verbatim>` and
+  ` destination=<the Location sent, or the frame's src>` (spaces, `"`, `\` and control characters
+  percent-encoded). A 404 line ends after the User-Agent.
 
 RedirHub takes the link from `file=` (without a trailing `/*`, percent-decoded) and counts the
 line for the key's workspace. No cookies, other headers or bodies are ever sent.
@@ -175,9 +208,9 @@ User-Agent: <client>/<version>
 
 | Client | `User-Agent` |
 | --- | --- |
-| Caddy module | `caddy-redirects/0.3.2` |
-| Next.js package | `nextjs-redirects/0.2.1` |
-| Cloudflare Workers package | `cloudflare-redirects/0.2.1` |
+| Caddy module | `caddy-redirects/0.4.0` |
+| Next.js package | `nextjs-redirects/0.3.0` |
+| Cloudflare Workers package | `cloudflare-redirects/0.3.0` |
 | A WordPress plugin written for one site | `wordpress-custom/1` |
 
 This is the header of the client's own requests. The `User-Agent` field inside a report line is

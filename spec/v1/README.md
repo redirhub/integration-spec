@@ -23,8 +23,9 @@ The directives in the order RedirHub writes them (`@format`, `@refresh`, `@notif
 each hostname's lines sorted bytewise. It covers an exact rule (`old-pricing`), the root
 (`shop.example.test/`), the catch-all with `pq` (`shop.example.test/*`), statuses 302, 307 and
 308, a non-ASCII path written percent-encoded (`preise/%C3%BCber-uns`), a target with a query and
-`q` (`promo`), and two lines RedirHub does not write today, there to keep clients
-forward-compatible:
+`q` (`promo`), a frame page (`tour`), a link with options a client may not carry out (`vip`:
+further destinations, a password, a plugin), and two lines RedirHub does not write today, there to
+keep clients forward-compatible:
 
 - `promo.example.test/spring ... 307<TAB><TAB>future=1`: an empty flags column and an unknown
   option. Options are may-ignore: the rule redirects.
@@ -44,13 +45,17 @@ Tab-separated, one header line, no quoting (a cell never holds a tab; `-` means 
 | `method`, `url` | The request; `url` is absolute (scheme, hostname as sent, maybe a port, path and query as sent). |
 | `referer`, `user_agent` | The request's headers. |
 | `site` | The status the site itself answers this request with when asked, with an empty body. |
-| `outcome` | `redirect` (a rule answers), `site` (the site's own answer passes through unchanged) or `check` (the check path answer). |
+| `outcome` | `redirect` (a rule answers), `frame` (a rule answers with a frame page), `site` (the site's own answer passes through unchanged) or `check` (the check path answer). |
 | `status`, `location` | The status and `Location` the client must send. |
-| `body` | The check path's body, `token=<check token> etag=<ETag of the rules in use>`; the cases serve `rules.txt` with `ETag: "spec-v1"`. |
+| `body` | The check path's body, `token=<check token> etag=<ETag of the rules in use>` (the cases serve `rules.txt` with `ETag: "spec-v1"`); for a frame page `src=<its iframe's src>`, the page holding exactly one `<iframe>` with that `src` (HTML-escaped). |
 | `report` | The line of `reports.txt` (1-based) the request is reported as. |
 
+A client that answers frame rules with a `302` to the same address instead (README, "Frame
+pages") checks the `frame` cases as redirects: status `302`, the `src` as `Location`, and the
+reported line with status `302`.
+
 Every request comes from `203.0.113.9` over `HTTP/1.1` at `31/Oct/2026:19:10:00 +0000`. Every
-redirect from the rules carries `X-Powered-By: RedirHub (integrated)` (`@powered-by`); the site's
+redirect and frame page from the rules carries `X-Powered-By: RedirHub (integrated)` (`@powered-by`); the site's
 own answers and the check path do not. Reporting follows `report404` on the `@host` line (the
 default of every client).
 
@@ -58,9 +63,10 @@ default of every client).
 
 One Apache combined line per reported request, as posted to `@hits`: the absolute URL with the
 hostname as listed (lowercase, no port) and the request target as sent, the status, the body
-size (`0` for a redirect; the site's 404 body, empty here), the Referer and User-Agent (`-` when
-missing, `"` and `\` backslash-escaped). A redirect then appends ` file=<the rule's source
-column, verbatim>` and ` destination=<the Location sent>`; a 404 appends nothing.
+size (`0` for a redirect and a frame page; the site's 404 body, empty here), the Referer and
+User-Agent (`-` when missing, `"` and `\` backslash-escaped). A redirect or frame page then
+appends ` file=<the rule's source column, verbatim>` and ` destination=<the Location sent, or the
+frame's src>`; a 404 appends nothing. A frame page is reported with status `200`.
 
 ## reports.expected.tsv
 
