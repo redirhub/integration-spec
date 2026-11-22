@@ -123,7 +123,10 @@ goes on to the site unchanged. A client **fails open**: on any error the request
 2. **Exact rules** redirect **before** the site's own routes, even when the page exists.
 3. Otherwise the site answers. Only when it answers **404** and the hostname has a **catch-all**,
    the 404 is discarded and the catch-all redirects instead. A working page is never taken over.
-   A platform that never sees the site's final status (e.g. a Next.js proxy) serves no catch-all.
+   A platform that never sees the site's final status (e.g. a Next.js proxy) may learn it from the
+   site's 404 page instead: a script on that page sends the page's address back to the client,
+   which then answers as for the site's 404 (the catch-all as a browser redirect, or the report).
+   Without that, it serves no catch-all.
 
 **Matching.** The hostname in any letter case, port and trailing dot ignored. The path
 case-sensitive, compared percent-decoded (bytewise: `%C3%BC`, `%c3%bc` and a raw `ü` are one
